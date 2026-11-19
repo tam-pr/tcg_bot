@@ -1,0 +1,22 @@
+## Jupyter
+jupyterlab
+ipywidgets
+ipykernel
+
+## Data science core
+numpy
+pandas
+polars
+scikit-learn
+scipy
+statsmodels
+
+## Visualization
+matplotlib
+seaborn
+plotly
+
+## Development tools
+ruff
+pytest
+python-dotenv

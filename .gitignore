@@ -1,0 +1,18 @@
+# Environments
+.venv/
+.env
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Empty repo accidentally cloned inside the project (see tcg_bot/.git)
+/tcg_bot/

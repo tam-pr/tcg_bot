@@ -1,0 +1,32 @@
+[project]
+name = "tcg-bot"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "tam-pr", email = "a01648580@tec.mx" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "ipykernel>=7.4.0",
+    "ipywidgets>=8.1.9",
+    "jupyterlab>=4.6.6",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.4",
+    "pandas>=3.1.1",
+    "plotly>=7.1.0",
+    "polars>=2.1.0",
+    "pytest>=9.2.0",
+    "python-dotenv>=1.2.4",
+    "ruff>=0.17.4",
+    "scikit-learn>=1.9.1",
+    "scipy>=1.18.1",
+    "seaborn>=0.13.2",
+    "statsmodels>=0.15.0",
+]
+
+[project.scripts]
+tcg-bot = "tcg_bot:main"
+
+[build-system]
+requires = ["uv_build>=0.13.4,<0.14.0"]
+build-backend = "uv_build"
