@@ -1,0 +1,15 @@
+key,value,unit,notes,source_page,status
+deck_size,60,cards,,22,verified
+min_basic_pokemon_in_deck,1,cards,,22,verified
+max_copies_per_name,4,cards,Basic Energy is exempt,21;22,verified
+ace_spec_max_per_deck,1,cards,One ACE SPEC card in total,37,verified
+opening_hand_size,7,cards,,8,verified
+prize_count,6,cards,,8,verified
+bench_max,5,pokemon,,7,verified
+sudden_death_prize_count,1,cards,,21,verified
+damage_per_counter,10,damage,,14,verified
+poison_counters_per_checkup,1,damage counters,,16,verified
+burn_counters_per_checkup,2,damage counters,,15,verified
+confusion_tails_counters,3,damage counters,,16,verified
+ex_prize_value,2,cards,Pokémon ex and Tera Pokémon ex,23;24,verified
+mega_ex_prize_value,,cards,The 2023 rulebook gives 2 for the old Mega Evolution Pokémon-EX; not confirmed for Mega Evolution ex,36,needs_check

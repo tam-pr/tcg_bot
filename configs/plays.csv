@@ -1,0 +1,24 @@
+play_id,group,name,card_kind,limit_per_turn,requires,effect_summary,card_can_override,source_page,status
+setup_coin_flip,setup,Coin flip for first player,,,none,Winner of the flip decides who goes first,false,8,verified
+setup_draw_hand,setup,Draw opening hand,,,none,Each player shuffles the deck and draws 7 cards,false,8,verified
+setup_mulligan,setup,Mulligan,,,No Basic Pokémon in the opening hand,Reveal the hand and shuffle it back and draw 7 again until it has a Basic Pokémon; the opponent may draw 1 extra card per extra mulligan taken; if both players mulligan equally both restart,false,8;18,verified
+setup_place_active,setup,Place Active Pokémon,Basic Pokémon,,A Basic Pokémon in hand,Put 1 Basic Pokémon face down as the Active Pokémon,false,8,verified
+setup_place_bench,setup,Place starting Bench,Basic Pokémon,,A Basic Pokémon in hand,Put up to 5 more Basic Pokémon face down on the Bench,false,8,verified
+setup_set_prizes,setup,Set Prize cards,,,none,Put the top 6 cards of the deck face down as Prize cards,false,8,verified
+turn_draw,turn,Draw a card,,1,Start of the player's turn,Draw 1 card; a player who cannot draw at the start of their turn loses,false,10;21,verified
+main_bench_basic,main,Bench a Basic Pokémon,Basic Pokémon,,Fewer than 5 Pokémon on the Bench,Put a Basic Pokémon from hand onto the Bench,true,10,verified
+main_evolve,main,Evolve a Pokémon,Stage 1 Pokémon;Stage 2 Pokémon,,The card says Evolves from X and X was in play at the start of the turn and has not evolved or entered play this turn and it is not the player's first turn,Play the card on top of X; it keeps attached cards and damage counters; Special Conditions and attack effects end,true,11,verified
+main_mega_turn_end,main,Mega Evolution ends the turn,,,A Pokémon becomes a Mega Evolution Pokémon,Under the 2023 rulebook the turn ends when a Pokémon becomes a Mega Evolution Pokémon; not confirmed for Mega Evolution ex cards,true,36,needs_check
+main_attach_energy,main,Attach Energy,Basic Energy;Special Energy,1,Energy card in hand,Attach 1 Energy card from hand to the Active or a Benched Pokémon,true,11,verified
+main_play_item,main,Play Item,Item,,Item card in hand,Follow the card text then discard it,true,12,verified
+main_play_supporter,main,Play Supporter,Supporter,1,Supporter card in hand and not the first turn of the player who goes first,Follow the card text then discard it,true,12,verified
+main_play_stadium,main,Play Stadium,Stadium,1,Stadium card in hand and no Stadium with the same name in play,The Stadium stays in play and an older Stadium is discarded,true,12,verified
+main_attach_tool,main,Attach Pokémon Tool,Pokémon Tool,,Tool card in hand and the target Pokémon has no Tool attached,Attach the Tool to one of your Pokémon,true,12;40,verified
+main_retreat,main,Retreat,,1,Active Pokémon is not Asleep or Paralyzed and there is a Benched Pokémon and enough Energy for the Retreat Cost,Discard Energy equal to the Retreat Cost then swap the Active with a Benched Pokémon; Special Conditions and attack effects end; the player may still attack,true,12,verified
+main_use_ability,main,Use an Ability,,,Per the Ability text,An Active or Benched Pokémon uses its Ability; Abilities are not attacks so the player can still attack,true,12;19,verified
+main_play_fossil,main,Play a Fossil as a Basic Pokémon,Item,,Fossil Item card in hand,A Fossil Item can be played as a Basic Pokémon; it is not a Basic Pokémon in hand deck or discard pile,true,30;39,verified
+attack_use,attack,Attack,,1,Active Pokémon has the Energy for the attack cost and is not Asleep or Paralyzed and the player going first cannot attack on their first turn,Announce the attack; Confusion check; make choices; apply effects and damage; then the turn ends,true,13;14;20,verified
+turn_end,end,End turn,,1,An attack was made or the player chose to stop,The turn ends after an attack; ending without attacking is not stated explicitly,false,13,inferred
+checkup,checkup,Pokémon Checkup,,,Between turns,Apply Special Conditions in order Poisoned Burned Asleep Paralyzed and card effects that happen at Checkup without mixing the two; after both players' checks Knock Outs are resolved,true,15,verified
+knock_out,checkup,Knock Out,,,Damage on a Pokémon is at least its HP,The Pokémon and all attached cards go to the discard pile; the opponent takes Prize cards (1 or 2 for Pokémon ex); the owner chooses a new Active from the Bench,true,14;23;24,verified
+win_check,end,Win check,,,After each Knock Out and at the start of each turn,A player wins by taking the last Prize card or when the opponent has no Pokémon in play or cannot draw at the start of their turn; if both players win at once play Sudden Death with 1 Prize card,false,8;21,verified

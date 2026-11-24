@@ -1,0 +1,6 @@
+condition,checkup_order,checkup_effect,blocks_attack,blocks_retreat,exclusive_group,removed_by,source_page,status
+Poisoned,1,Put 1 damage counter,false,false,,The Pokémon moves to the Bench or evolves,16,verified
+Burned,2,Put 2 damage counters then flip a coin and heads removes Burned,false,false,,Heads at Checkup or the Pokémon moves to the Bench or evolves,15,verified
+Asleep,3,Flip a coin and heads removes Asleep,true,true,rotation,Heads at Checkup or the Pokémon moves to the Bench or evolves,15,verified
+Paralyzed,4,Removed at the Checkup after its owner's next turn,true,true,rotation,That Checkup or the Pokémon moves to the Bench or evolves,16,verified
+Confused,,No Checkup step; flip a coin before attacking and tails means the attack fails and 3 damage counters go on the Pokémon,false,false,rotation,The Pokémon moves to the Bench or evolves,16,verified

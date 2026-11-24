@@ -1,0 +1,18 @@
+card_id,card_name,provides,amount,condition,cond_provides,cond_amount,attach_restriction,discard_end_of_turn,status
+9,Boomerang Energy,C,1,,,,,false,verified
+10,Neo Upper Energy,C,1,attached_to_stage2,ALL,2,,false,verified
+11,Mist Energy,C,1,,,,,false,verified
+12,Legacy Energy,ALL,1,,,,,false,verified
+13,Enriching Energy,C,1,,,,,false,verified
+14,Spiky Energy,C,1,,,,,false,verified
+15,Team Rocket's Energy,P|D,2,,,,team_rocket,false,verified
+16,Prism Energy,C,1,attached_to_basic,ALL,1,,false,verified
+17,Ignition Energy,C,1,attached_to_evolution,C,3,,true,verified
+18,Grow Grass Energy,G,1,,,,,false,verified
+19,Telepath Psychic Energy,P,1,,,,,false,verified
+20,Rock Fighting Energy,F,1,,,,,false,verified
+1268,Nitro {R} Energy,R,1,,,,,false,verified
+1269,Bubbly {W} Energy,W,1,,,,,false,verified
+1270,Magnetic {M} Energy,M,1,,,,,false,verified
+1271,Voltaic {L} Energy,L,1,,,,,false,verified
+1272,Shadowy {D} Energy,D,1,,,,,false,verified
