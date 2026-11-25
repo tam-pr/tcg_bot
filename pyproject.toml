@@ -1,7 +1,7 @@
 [project]
 name = "tcg-bot"
 version = "0.1.0"
-description = "Add your description here"
+description = "Plays the Pokémon TCG with a locally trained neural network"
 authors = [
     { name = "tam-pr", email = "a01648580@tec.mx" }
 ]
