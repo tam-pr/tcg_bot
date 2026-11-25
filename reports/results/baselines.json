@@ -1,0 +1,125 @@
+{
+  "settings_assumptions": {
+    "mega_evolution_ends_turn": false,
+    "mega_ex_prize_value": 3,
+    "resistance_amount": 30,
+    "may_end_turn_without_attack": true,
+    "effect_attach_uses_hand_attach": false,
+    "bottom_of_deck_order": "random",
+    "search_may_find_fewer": true,
+    "recoil_applies_weakness_resistance": false,
+    "take_mulligan_bonus_cards": true
+  },
+  "matches": [
+    {
+      "a": "random",
+      "b": "random_b",
+      "games": 400,
+      "a_win_rate": 0.535,
+      "ci95": [
+        0.486,
+        0.583
+      ],
+      "draws": 0,
+      "a_win_rate_by_a_deck": {
+        "lopunny": [
+          0.525,
+          200
+        ],
+        "mega_lucario": [
+          0.545,
+          200
+        ]
+      },
+      "mean_turns": 44.5,
+      "games_per_second": 23.1
+    },
+    {
+      "a": "heuristic",
+      "b": "random",
+      "games": 400,
+      "a_win_rate": 0.877,
+      "ci95": [
+        0.842,
+        0.906
+      ],
+      "draws": 0,
+      "a_win_rate_by_a_deck": {
+        "lopunny": [
+          0.88,
+          200
+        ],
+        "mega_lucario": [
+          0.875,
+          200
+        ]
+      },
+      "mean_turns": 22.6,
+      "games_per_second": 47.3
+    },
+    {
+      "a": "mcts",
+      "b": "random",
+      "games": 20,
+      "a_win_rate": 0.9,
+      "ci95": [
+        0.699,
+        0.972
+      ],
+      "draws": 0,
+      "a_win_rate_by_a_deck": {
+        "lopunny": [
+          0.9,
+          10
+        ],
+        "mega_lucario": [
+          0.9,
+          10
+        ]
+      },
+      "mean_turns": 29.1,
+      "games_per_second": 0.0,
+      "mcts_seconds_per_searched_move": 0.856,
+      "mcts_searched_moves": 943,
+      "mcts_budget": {
+        "determinizations": 4,
+        "iterations": 24,
+        "rollout_actions": 40
+      }
+    },
+    {
+      "a": "mcts",
+      "b": "heuristic",
+      "games": 20,
+      "a_win_rate": 0.8,
+      "ci95": [
+        0.584,
+        0.919
+      ],
+      "draws": 0,
+      "a_win_rate_by_a_deck": {
+        "lopunny": [
+          0.8,
+          10
+        ],
+        "mega_lucario": [
+          0.8,
+          10
+        ]
+      },
+      "mean_turns": 25.0,
+      "games_per_second": 0.0,
+      "mcts_seconds_per_searched_move": 0.984,
+      "mcts_searched_moves": 917,
+      "mcts_budget": {
+        "determinizations": 4,
+        "iterations": 24,
+        "rollout_actions": 40
+      }
+    }
+  ],
+  "p_opening_without_basic": {
+    "lopunny": 0.2586,
+    "mega_lucario": 0.2224
+  }
+}
