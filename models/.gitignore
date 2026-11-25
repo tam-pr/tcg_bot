@@ -1,0 +1,2 @@
+# checkpoints stay out of git; only small metadata (config, metrics, curves, eval) is committed
+*.pt
