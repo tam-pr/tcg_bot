@@ -1,0 +1,22 @@
+{
+  "name": "main",
+  "seed": 0,
+  "iterations": 100,
+  "games_per_iter": 32,
+  "card_repr": "pca_bypass",
+  "use_identity": true,
+  "emb": 8,
+  "hidden": 128,
+  "lr": 0.0003,
+  "gamma": 0.99,
+  "lam": 0.95,
+  "clip": 0.2,
+  "epochs": 4,
+  "minibatch": 256,
+  "ent_coef": 0.01,
+  "vf_coef": 0.5,
+  "shaping": 0.05,
+  "stage1_iters": 10,
+  "snapshot_every": 10,
+  "eval_games": 200
+}

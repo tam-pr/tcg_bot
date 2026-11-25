@@ -1,0 +1,48 @@
+{
+  "random": {
+    "a": "main",
+    "b": "random",
+    "games": 200,
+    "a_win_rate": 0.96,
+    "ci95": [
+      0.923,
+      0.98
+    ],
+    "draws": 0,
+    "a_win_rate_by_a_deck": {
+      "lopunny": [
+        0.96,
+        100
+      ],
+      "mega_lucario": [
+        0.96,
+        100
+      ]
+    },
+    "mean_turns": 23.4,
+    "games_per_second": 12.1
+  },
+  "heuristic": {
+    "a": "main",
+    "b": "heuristic",
+    "games": 200,
+    "a_win_rate": 0.415,
+    "ci95": [
+      0.349,
+      0.484
+    ],
+    "draws": 0,
+    "a_win_rate_by_a_deck": {
+      "lopunny": [
+        0.45,
+        100
+      ],
+      "mega_lucario": [
+        0.38,
+        100
+      ]
+    },
+    "mean_turns": 22.1,
+    "games_per_second": 8.6
+  }
+}
