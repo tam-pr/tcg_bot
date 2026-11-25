@@ -51,6 +51,39 @@ To run a notebook from the command line:
 uv run jupyter nbconvert --to notebook --execute notebooks/data_processing.ipynb --output-dir /tmp
 ```
 
+## Using the system
+
+| What | Command |
+|---|---|
+| Play against the heuristic in the text console | `uv run tcg-bot` (`--opponent random`, `--deck`, `--opp-deck`, `--seed`) |
+| Train the model (PPO self-play, CPU) | `uv run python scripts/train.py --name main --iterations 100 --games-per-iter 32` |
+| Baseline league (random, heuristic, MCTS) | `uv run python reports/results/run_baselines.py 400 20` |
+| PCA ablation (five card inputs, three seeds) | `uv run python reports/results/run_ablation.py 40 16 100 1 2 3` |
+
+In the console, type commands such as `lunatone to bench`, `basic energy to solrock`, `play ultra ball` or `lucario "aura jab"`. Then:
+- `help` lists the legal commands.
+- `board` shows the board.
+- `hint` shows what the advisor would play.
+
+Analysis notebooks:
+- `notebooks/edas/eda_tagging.ipynb`: effect tagging.
+- `notebooks/edas/eda_pca.ipynb`: card features and PCA (v1 and v2). It writes `card_vectors.parquet` and `card_pca.joblib`.
+- `notebooks/evaluation.ipynb`: the baseline league, the main model and the PCA ablation. It reads `reports/results/` and `models/main/`.
+
+Code map:
+
+| Path | Contents |
+|---|---|
+| `src/tcg_bot/engine/` | The rules engine. API: `new_game`, `legal_actions`, `step`, `observe`, `winner` (see `reports/engine_interface.md`) |
+| `src/tcg_bot/beliefs.py` | The Prize card and opponent-deck belief trackers |
+| `src/tcg_bot/agents/` | Random, heuristic and determinized MCTS players |
+| `src/tcg_bot/evaluate.py` | Matches with both seats, both decks and Wilson intervals |
+| `src/tcg_bot/console.py` | The text console |
+| `src/tcg_bot/features.py`, `tagger.py` | Card features and PCA, and the full-pool effect tagger |
+| `src/tcg_bot/model/` | Encoder, policy-value network and PPO |
+
+Rule values that are not confirmed yet are fields of `tcg_bot.engine.RuleSettings` (see `reports/decisions.md`).
+
 ## Branch rules
 
 **Do all work outside `main`. Never commit to, push to or merge into `main`.**
