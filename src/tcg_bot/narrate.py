@@ -12,8 +12,9 @@ import time
 from pathlib import Path
 
 from tcg_bot.engine.catalog import catalog
+from tcg_bot.engine.effects_runtime import effect_for, holds
 from tcg_bot.engine.game import card_of, legal_actions, new_game, step
-from tcg_bot.engine.turn import max_hp
+from tcg_bot.engine.turn import max_hp, usable_attacks
 from tcg_bot.engine.types import PLAYERS, Action, ActionKind, Phase, State
 
 LOG = Path("game.log")
@@ -46,6 +47,8 @@ def describe(before: State, action: Action, after: State, names: tuple[str, str]
     else:
         out.append(_turn_sentence(before, action, after, who))
 
+    if before.phase != Phase.SETUP:
+        out += _consequences(before, after, names)
     if before.phase == Phase.SETUP and after.phase != Phase.SETUP:
         out.append(f"Each player sets {after.prize_count} Prize cards. Pokémon are turned face up:")
         for i in PLAYERS:
@@ -69,6 +72,7 @@ def _turn_sentence(before: State, action: Action, after: State, who: str) -> str
     """One sentence for a main-phase action. Every card named here is face up by now."""
     me = before.players[action.player]
     mons = {m.uid: card_of(before, m.card).name for p in before.players for m in p.pokemon()}
+    kind = before.pending.kind if before.pending else None
 
     def name(uid: int) -> str:
         return card_of(before, uid).name
@@ -83,21 +87,61 @@ def _turn_sentence(before: State, action: Action, after: State, who: str) -> str
         return f"{who} retreats {mons[me.active.uid]} for {mons[action.target]}."
     if action.kind == ActionKind.END_TURN:
         return f"{who} ends the turn without attacking."
-    if action.kind == ActionKind.CHOOSE and before.pending.kind == "retreat_cost":
-        return f"{who} discards {name(action.option)} to retreat."
-    if action.kind == ActionKind.CHOOSE and before.pending.kind == "new_active":
-        return f"{who} moves {mons[action.option]} to the Active Spot."
     if action.kind == ActionKind.ATTACK:
-        foe = 1 - action.player
-        attacker, defender = me.active, before.players[foe].active
-        move = next(m for m in card_of(before, attacker.card).moves if m.move_id == action.move_id)
-        text = f"{who}'s {mons[attacker.uid]} uses {move.name} on {mons[defender.uid]}"
-        hit = next((m for m in after.players[foe].pokemon() if m.uid == defender.uid), None)
-        if hit:
-            return f"{text}: {hit.damage - defender.damage} damage."
-        taken = len(me.prizes) - len(after.players[action.player].prizes)
-        return f"{text}: Knocked Out! {who} takes {taken} Prize card(s)."
+        move = next(m for m in card_of(before, me.active.card).moves if m.move_id == action.move_id)
+        target = mons[before.players[1 - action.player].active.uid]
+        failed = "" if _works(before, action.move_id) else " It does nothing: what the card needs is not there."
+        return f"{who}'s {mons[me.active.uid]} uses {move.name} (opposing Active: {target}).{failed}"
+    if action.kind == ActionKind.CHOOSE_DONE:
+        return f"{who} stops choosing."
+    if kind == "retreat_cost":
+        return f"{who} discards {name(action.option)} to retreat."
+    if kind in ("new_active", "switch_to"):
+        return f"{who} moves {mons[action.option]} to the Active Spot."
+    if kind == "energy_to_hand":
+        return f"{who} puts {name(action.option)} back into their hand."
+    if kind == "attach_pick":
+        return f"{who} takes {name(action.option)} from the discard pile."
+    if kind == "attach_target":
+        return f"{who} attaches {name(before.pending.subject)} to {mons[action.option]}."
     return f"{who}: {action.kind.value}"
+
+
+def _works(state: State, move_id: str) -> bool:
+    """Are the conditions on the card met? ("If you don't have Lunatone on your Bench, this attack does nothing.")"""
+    player = state.current
+    return all(holds(state, c, player, state.players[player].active.uid) for c in effect_for(move_id).works_only_if)
+
+
+def _consequences(before: State, after: State, names: tuple[str, str]) -> list[str]:
+    """What changed on the board, whatever caused it: damage, sleep, protection, Knock Outs, Prizes."""
+    out = []
+    for i in PLAYERS:
+        now = {m.uid: m for m in after.players[i].pokemon()}
+        for old in before.players[i].pokemon():
+            who = f"{names[i]}'s {card_of(before, old.card).name}"
+            mon = now.get(old.uid)
+            if mon is None:
+                if old.card in after.players[i].discard:
+                    out.append(f"{who} is Knocked Out!")
+                elif old.card in after.players[i].hand:
+                    out.append(f"{who} goes back to the hand with everything attached.")
+                continue
+            if mon.damage > old.damage:
+                out.append(f"{who} takes {mon.damage - old.damage} damage.")
+            if mon.rotation != old.rotation:
+                out.append(f"{who} is now {mon.rotation}." if mon.rotation else f"{who} is no longer {old.rotation}.")
+        taken = len(before.players[i].prizes) - len(after.players[i].prizes)
+        if taken > 0 and before.phase != Phase.SETUP:
+            out.append(f"{names[i]} takes {taken} Prize card(s).")
+    for effect in after.lasting:
+        if effect not in before.lasting:
+            mon = next((m for m in after.players[effect.controller].pokemon() if m.uid == effect.target), None)
+            if mon:
+                what = "can't repeat that attack next turn" if hasattr(effect.block, "attack") else \
+                    "is protected during the opponent's next turn"
+                out.append(f"{card_of(after, mon.card).name} {what}.")
+    return out
 
 
 def write(lines: list[str], path: Path = LOG) -> None:
@@ -118,7 +162,8 @@ def board_lines(state: State, names: tuple[str, str]) -> list[str]:
     def show(mon) -> str:
         hp = max_hp(state, mon)
         energy = "".join(catalog().energy[state.card_ids[u]][0] for u in mon.energy)
-        return f"{name(mon.card)} {hp - mon.damage}/{hp}" + (f" [{energy}]" if energy else "")
+        state_text = f" ({mon.rotation})" if mon.rotation else ""
+        return f"{name(mon.card)} {hp - mon.damage}/{hp}" + (f" [{energy}]" if energy else "") + state_text
 
     title = "setup" if state.phase == Phase.SETUP else f"turn {state.turn}: {names[state.current]}"
     if state.phase == Phase.OVER:
@@ -146,25 +191,24 @@ def demo_choice(state: State, pick: random.Random) -> Action:
     if state.phase == Phase.SETUP:
         return actions[-1]
     if state.pending:
-        return pick.choice(actions)
+        return pick.choice([a for a in actions if a.kind == ActionKind.CHOOSE] or actions)
     p = state.players[state.current]
 
-    def fights(uid: int) -> bool:          # has an attack the engine can already play
-        return any(m.kind == "attack" and m.text is None for m in card_of(state, uid).moves)
+    def fights(uid: int) -> bool:
+        return any(m.kind == "attack" for m in card_of(state, uid).moves)
 
     mons = {m.uid: m for m in p.pokemon()}
     of_kind = {k: [a for a in actions if a.kind == k] for k in ActionKind}
-    stuck = not fights(p.active.card)
-    ready = [a for a in of_kind[ActionKind.RETREAT] if stuck and fights(mons[a.target].card)]
-    evolve = [a for a in of_kind[ActionKind.EVOLVE] if fights(a.card) or a.target != p.active.uid]
+    stuck = not any(_works(state, a.move_id) for a in of_kind[ActionKind.ATTACK])
+    ready = [a for a in of_kind[ActionKind.RETREAT] if stuck and usable_attacks(state, mons[a.target])]
     attach = of_kind[ActionKind.ATTACH_ENERGY]
-    attach = ([a for a in attach if a.target == p.active.uid]                       # to attack, or to retreat
-              or [a for a in attach if fights(mons[a.target].card)] or attach)
-    for choices in (evolve, of_kind[ActionKind.BENCH], attach, ready, of_kind[ActionKind.ATTACK]):
+    attach = [a for a in attach if a.target == p.active.uid] if stuck else []
+    attach = attach or [a for a in of_kind[ActionKind.ATTACH_ENERGY] if fights(mons[a.target].card)]
+    attacks = [a for a in of_kind[ActionKind.ATTACK] if _works(state, a.move_id)]
+    for choices in (of_kind[ActionKind.EVOLVE], of_kind[ActionKind.BENCH], attach, ready, attacks):
         if choices:
             return pick.choice(choices)
     return Action(ActionKind.END_TURN, state.current)
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Play a game and log it.")
@@ -175,17 +219,20 @@ def main() -> None:
     decks = ("lopunny", "mega_lucario")
     pick = random.Random(args.seed)
     state = new_game(decks, args.seed)
-    write(opening_lines(state, decks))
+    lines = opening_lines(state, decks)
+    write(lines)
+    print("\n".join(lines))
     show_board(state, decks)
     while state.phase != Phase.OVER:
         time.sleep(args.delay)
         action = demo_choice(state, pick)
         after = step(state, action)
-        write(describe(state, action, after, decks))
+        lines = describe(state, action, after, decks)
+        write(lines)
+        print("\n".join(lines))
         show_board(after, decks)
         state = after
     print(f"Done after {state.turn} turns. The game was written to {LOG} and {BOARD}.")
-
 
 if __name__ == "__main__":
     main()

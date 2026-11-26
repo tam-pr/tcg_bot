@@ -26,8 +26,12 @@ def legal_actions(state: State) -> list[Action]:
     if state.phase == Phase.OVER:
         return []
     if state.pending:
-        return [Action(ActionKind.CHOOSE, state.pending.player, option=o)
-                for o in state.pending.options if o not in state.pending.picked]
+        pending = state.pending
+        out = [Action(ActionKind.CHOOSE, pending.player, option=o)
+               for o in pending.options if o not in pending.picked]
+        if len(pending.picked) >= pending.min_count:      # allowed to stop here
+            out.append(Action(ActionKind.CHOOSE_DONE, pending.player))
+        return out
     if state.phase == Phase.SETUP:
         return _placement_actions(state)
     return main_actions(state)
@@ -37,7 +41,7 @@ def step(state: State, action: Action) -> State:
     if action not in legal_actions(state):
         raise ValueError(f"illegal action: {action}")
     new = state.clone()
-    if action.kind == ActionKind.CHOOSE:
+    if action.kind in (ActionKind.CHOOSE, ActionKind.CHOOSE_DONE):
         _answer(new, action.option)
     elif new.phase == Phase.SETUP:
         _place(new, action)
@@ -66,7 +70,7 @@ def _deal_opening_hand(state: State, player: int) -> None:
         p.hand.clear()
 
 
-def _answer(state: State, option: int) -> None:
+def _answer(state: State, option: int | None) -> None:
     pending, state.pending = state.pending, None
     if pending.kind == "go_first":
         state.first_player = pending.player if option == 1 else 1 - pending.player
