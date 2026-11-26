@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 import torch
 
 from tcg_bot.engine.game import legal_actions, new_game, step
-from tcg_bot.engine.observe import observe
-from tcg_bot.engine.types import Action, Phase, State
+from tcg_bot.engine.observe import Observation, observe
+from tcg_bot.engine.types import Action, ActionKind, Phase, State
 from tcg_bot.model.encode import Encoded, encode
 from tcg_bot.model.net import Net, collate
 from tcg_bot.narrate import demo_choice
@@ -24,12 +24,22 @@ def decide(net: Net, batch: list[Encoded], greedy: bool) -> tuple[list[int], lis
     return chosen.tolist(), logp.gather(1, chosen[:, None]).squeeze(1).tolist(), value.tolist()
 
 
-def model_choice(net: Net, state: State, greedy: bool = True) -> Action:
-    """One move by the model, for playing against a person. It is given the view only, never the state."""
+def bench_first(view: Observation, actions: list[Action], chosen: Action) -> Action:
+    """Hand-written safety rule, NOT learned: with an empty Bench, put a Basic there before ending the turn."""
+    ending = chosen.kind in (ActionKind.END_TURN, ActionKind.ATTACK)
+    if view.phase == Phase.MAIN and view.pending is None and not view.me.bench and ending:
+        return next((a for a in actions if a.kind == ActionKind.BENCH), chosen)
+    return chosen
+
+
+def model_choice(net: Net, state: State, greedy: bool = True, safety_rule: bool = True) -> Action:
+    """One move by the model, for playing against a person. It is given the view only, never the state.
+    Training and evaluation do not use this function, so their results are the network on its own."""
     actions = legal_actions(state)
     view = observe(state, actions[0].player)
     encoded = encode(view, actions)
-    return encoded.actions[decide(net, [encoded], greedy)[0][0]]
+    chosen = encoded.actions[decide(net, [encoded], greedy)[0][0]]
+    return bench_first(view, actions, chosen) if safety_rule else chosen
 
 
 @dataclass
