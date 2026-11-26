@@ -6,7 +6,8 @@
 At each of your decisions, type the number of a move, or words from it ("attach water buneary").
 Type  help  for the other commands.
 
-The computer is the simple stand-in from narrate.py, not a trained model. You are shown only your own view.
+The computer is the simple stand-in from narrate.py unless --model names a trained one.
+You are shown only your own view.
 """
 import argparse
 import random
@@ -185,7 +186,7 @@ def table(state: State, view: Observation, names: tuple[str, str]) -> list[str]:
 
 
 # ---------------------------------------------------------------- the game loop
-def play(deck: str, seed: int, ask=input, say=print) -> State:
+def play(deck: str, seed: int, ask=input, say=print, opponent=demo_choice) -> State:
     """You are player 0. `ask` and `say` can be replaced, which is how the tests play."""
     other = next(d for d in DECKS if d != deck)
     names = (f"{deck} (you)", f"{other} (computer)")
@@ -202,7 +203,7 @@ def play(deck: str, seed: int, ask=input, say=print) -> State:
                 say("Game stopped.")
                 return state
         else:
-            action = demo_choice(state, pick)
+            action = opponent(state, pick)
         after = step(state, action)
         for line in describe(state, action, after, names):
             if not line.startswith("Cards:"):
@@ -268,9 +269,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Play against the computer.")
     parser.add_argument("--deck", choices=DECKS, default="lopunny")
     parser.add_argument("--seed", type=int, default=None, help="repeat a game; random if left out")
+    parser.add_argument("--model", default=None, help="play a trained model, e.g. models/first")
     args = parser.parse_args()
     seed = random.randrange(100_000) if args.seed is None else args.seed
-    play(args.deck, seed)
+    if args.model is None:
+        play(args.deck, seed)
+        return
+    from tcg_bot.model.net import load  # torch is only needed when a model plays
+    from tcg_bot.model.player import model_choice
+
+    net = load(args.model)
+    play(args.deck, seed, opponent=lambda state, pick: model_choice(net, state))
 
 
 if __name__ == "__main__":

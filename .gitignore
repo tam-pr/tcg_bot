@@ -2,6 +2,9 @@
 .venv/
 .env
 
+# trained networks (large and rebuildable); metrics.csv and config.json are kept
+models/**/*.pt
+
 # Python
 __pycache__/
 *.pyc
