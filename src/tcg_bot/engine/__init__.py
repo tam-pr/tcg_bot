@@ -1,0 +1,1 @@
+"""The game engine: state, rules and card effects."""
