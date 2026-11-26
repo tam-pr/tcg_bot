@@ -88,11 +88,6 @@ def test_a_player_who_cannot_draw_loses():
     assert legal_actions(state) == []
 
 
-def test_main_phase_says_it_is_not_written():
-    with pytest.raises(NotImplementedError):
-        legal_actions(play_opening(0)[0])
-
-
 def test_unknown_deck_raises():
     with pytest.raises(ValueError):
         new_game(("lopunny", "nope"), 0)

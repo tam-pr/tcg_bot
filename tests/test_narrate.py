@@ -5,7 +5,7 @@ import pytest
 from tcg_bot.engine.catalog import catalog
 from tcg_bot.engine.game import legal_actions, new_game, step
 from tcg_bot.engine.types import Phase
-from tcg_bot.narrate import describe, opening_lines, write
+from tcg_bot.engine.narrate import board_lines, demo_choice, describe, opening_lines, write
 
 DECKS = ("lopunny", "mega_lucario")
 
@@ -31,3 +31,17 @@ def test_write_adds_to_the_file(tmp_path):
     write(["a"], path)
     write(["b"], path)
     assert path.read_text(encoding="utf-8") == "a\nb\n"
+
+
+@pytest.mark.parametrize("seed", range(20))
+def test_a_whole_game_can_be_narrated(seed):
+    pick = random.Random(seed)
+    state = new_game(DECKS, seed)
+    lines = []
+    while state.phase != Phase.OVER:
+        action = demo_choice(state, pick)
+        after = step(state, action)
+        lines += describe(state, action, after, DECKS)
+        board_lines(after, DECKS)
+        state = after
+    assert lines[-1].startswith("GAME OVER")

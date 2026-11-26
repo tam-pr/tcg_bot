@@ -1,17 +1,12 @@
 """The game's public functions: new_game, legal_actions and step.
 
-So far: the opening (coin flip, hands, mulligans, placing Pokémon, Prizes) and the draw that starts a turn.
-Main-phase actions are not written yet and raise NotImplementedError.
-
+This file holds the opening (coin flip, hands, mulligans, placing Pokémon, Prizes); turns are in turn.py.
 Order follows the `plays` table: hands, mulligans (with the bonus draw), Active and Bench, then Prizes.
 `step` never changes the state it is given; it returns a new one.
 """
-from tcg_bot.engine.catalog import Card, catalog
-from tcg_bot.engine.types import PLAYERS, Action, ActionKind, PendingChoice, Phase, PokemonInPlay, State, TurnFlags
-
-
-def card_of(state: State, uid: int) -> Card:
-    return catalog().cards[state.card_ids[uid]]
+from tcg_bot.engine.catalog import catalog
+from tcg_bot.engine.turn import answer_choice, apply_action, card_of, draw, main_actions, start_turn
+from tcg_bot.engine.types import PLAYERS, Action, ActionKind, PendingChoice, Phase, PokemonInPlay, State
 
 
 def new_game(deck_ids: tuple[str, str], seed: int) -> State:
@@ -31,10 +26,11 @@ def legal_actions(state: State) -> list[Action]:
     if state.phase == Phase.OVER:
         return []
     if state.pending:
-        return [Action(ActionKind.CHOOSE, state.pending.player, option=o) for o in state.pending.options]
+        return [Action(ActionKind.CHOOSE, state.pending.player, option=o)
+                for o in state.pending.options if o not in state.pending.picked]
     if state.phase == Phase.SETUP:
         return _placement_actions(state)
-    raise NotImplementedError(f"{state.phase} phase is not written yet")
+    return main_actions(state)
 
 
 def step(state: State, action: Action) -> State:
@@ -43,30 +39,11 @@ def step(state: State, action: Action) -> State:
     new = state.clone()
     if action.kind == ActionKind.CHOOSE:
         _answer(new, action.option)
-    else:
+    elif new.phase == Phase.SETUP:
         _place(new, action)
+    else:
+        apply_action(new, action)
     return new
-
-
-# ---------------------------------------------------------------- drawing
-def draw(state: State, player: int, count: int = 1) -> int:
-    """Move up to `count` cards from the top of the deck to the hand. Returns how many moved."""
-    p = state.players[player]
-    n = min(count, len(p.deck))
-    p.hand += p.deck[:n]
-    del p.deck[:n]
-    return n
-
-
-def start_turn(state: State, player: int) -> None:
-    state.turn += 1
-    state.current = player
-    state.players[player].flags = TurnFlags()
-    for p in state.players:
-        for mon in p.pokemon():
-            mon.abilities_used.clear()
-    if draw(state, player) == 0:                      # cannot draw at the start of the turn
-        state.phase, state.winner, state.end_reason = Phase.OVER, 1 - player, "deck_out"
 
 
 # ---------------------------------------------------------------- the opening
@@ -104,7 +81,7 @@ def _answer(state: State, option: int) -> None:
     elif pending.kind == "mulligan_draw":
         draw(state, pending.player, option)
     else:
-        raise NotImplementedError(f"choice {pending.kind!r} is not written yet")
+        answer_choice(state, pending, option)
 
 
 def _placement_actions(state: State) -> list[Action]:

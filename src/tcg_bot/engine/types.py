@@ -169,6 +169,7 @@ class PendingChoice:
     min_count: int = 1
     max_count: int = 1
     picked: tuple[int, ...] = ()
+    subject: int | None = None       # e.g. the Pokémon coming up once a retreat is paid
 
 
 # ---------------------------------------------------------------- the whole game
