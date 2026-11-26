@@ -157,7 +157,8 @@ class Frame:
     source: int
     move_id: str
     steps: tuple                     # blocks from tcg_bot.effects still to run
-    facts: frozenset[str] = frozenset()        # e.g. "drew_any", "healed_any"
+    facts: frozenset[str] = frozenset()        # what earlier steps did: "drew", "healed", "bottom"
+    chosen: int | None = None                  # the Pokémon an earlier step picked
 
 
 @dataclass(frozen=True)

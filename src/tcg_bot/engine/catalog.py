@@ -35,6 +35,7 @@ class Card:
     previous_stage: str | None
     is_ex: bool
     is_mega: bool
+    has_rule_box: bool = False
     moves: tuple[Move, ...] = ()
 
     @property
@@ -81,6 +82,7 @@ def catalog() -> Catalog:
             resistance=_plain(r.resistance),
             retreat_cost=None if pd.isna(r.retreat_cost) else int(r.retreat_cost),
             previous_stage=_plain(r.previous_stage), is_ex=bool(r.is_ex), is_mega=bool(r.is_mega),
+            has_rule_box=bool(r.has_rule_box),
             moves=moves.get(int(r.card_id), ()))
     missing = constants.loc[constants["value"].isna(), "key"].tolist()
     if missing:

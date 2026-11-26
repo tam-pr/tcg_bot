@@ -1,11 +1,11 @@
 """One turn: main-phase actions, attacks, Knock Outs, Prizes, the Checkup and passing the turn.
 
-NOT WRITTEN YET, so legal_actions does not offer them: Abilities and Trainer cards.
-The only Special Condition the two decks' attacks cause is Asleep.
+A Trainer card or Ability is offered only when its requirements are met and it would do something.
+The only Special Condition the two decks cause is Asleep.
 """
 from dataclasses import replace
 
-from tcg_bot.effects import Lockout
+from tcg_bot.effects import Lockout, Usage
 from tcg_bot.engine import effects_runtime as runtime
 from tcg_bot.engine.board import (
     attached_energy,
@@ -74,6 +74,63 @@ def _finish(state: State, winner: int | None, reason: str) -> None:
     state.stack.clear()
 
 
+# ---------------------------------------------------------------- Abilities
+def abilities(state: State, mon: PokemonInPlay, timing: str) -> list[Move]:
+    """The Pokémon's Abilities with this timing that may be used right now."""
+    me = state.current
+    found = []
+    for move in card_of(state, mon.card).moves:
+        if move.kind != "ability" or runtime.effect_for(move.move_id).timing != timing:
+            continue
+        usage = runtime.effect_for(move.move_id).usage
+        if (not _used(state, mon, move.move_id, usage)
+                and (not usage.first_turn_only or state.is_first_turn_of(me))
+                and runtime.can_use(state, me, move.move_id)):
+            found.append(move)
+    return found
+
+
+def _used(state: State, mon: PokemonInPlay, move_id: str, usage: Usage) -> bool:
+    if usage.scope == "per_pokemon":
+        return move_id in mon.abilities_used
+    if usage.scope in ("per_name", "per_name_contains"):
+        return usage.key in state.players[state.current].flags.names_used
+    return False
+
+
+def _use_ability(state: State, mon: PokemonInPlay, move_id: str) -> None:
+    usage = runtime.effect_for(move_id).usage
+    mon.abilities_used.add(move_id)
+    if usage.key:
+        state.players[state.current].flags.names_used.add(usage.key)
+    runtime.push(state, state.current, mon.uid, move_id)
+    runtime.run(state)
+    _settle(state)
+
+
+def _offer(state: State, mon: PokemonInPlay, timing: str) -> None:
+    """An Ability that triggers on playing or evolving: ask whether to use it."""
+    if abilities(state, mon, timing):
+        state.pending = PendingChoice(player=state.current, kind="use_ability", options=(0, 1), subject=mon.uid)
+
+
+def _settle(state: State) -> None:
+    """After a Trainer or Ability: discard the played card, then deal with Knock Outs and empty spots."""
+    if state.pending or state.phase == Phase.OVER:
+        return
+    me = state.players[state.current]
+    me.discard += me.playing
+    me.playing.clear()
+    _resolve_knock_outs(state)
+    if state.phase == Phase.OVER:
+        return
+    for player in (state.current, 1 - state.current):
+        p = state.players[player]
+        if p.active is None:
+            state.pending = PendingChoice(player=player, kind="promote", options=tuple(m.uid for m in p.bench))
+            return
+
+
 # ---------------------------------------------------------------- what can be done
 def main_actions(state: State) -> list[Action]:
     me = state.current
@@ -92,11 +149,33 @@ def main_actions(state: State) -> list[Action]:
                     if card_of(state, m.card).name == card.previous_stage and m.in_play_since < state.turn]
         if card.family == "energy" and not p.flags.energy_attached:
             out += [Action(ActionKind.ATTACH_ENERGY, me, card=uid, target=m.uid) for m in p.pokemon()]
+        if card.family == "trainer":
+            out += _trainer_actions(state, uid, card)
+    for mon in p.pokemon():
+        out += [Action(ActionKind.USE_ABILITY, me, target=mon.uid, move_id=m.move_id)
+                for m in abilities(state, mon, "activated")]
     if not asleep and not p.flags.retreated and attached_energy(state, p.active).total() >= retreat_cost(state, p.active):
         out += [Action(ActionKind.RETREAT, me, target=m.uid) for m in p.bench]
     if not asleep and state.turn > 1:                    # whoever goes first cannot attack on turn 1
         out += [Action(ActionKind.ATTACK, me, move_id=m.move_id) for m in usable_attacks(state, p.active)]
     return out
+
+
+def _trainer_actions(state: State, uid: int, card: Card) -> list[Action]:
+    me = state.current
+    p = state.players[me]
+    if card.kind == "Pokémon Tool":
+        return [Action(ActionKind.ATTACH_TOOL, me, card=uid, target=m.uid) for m in p.pokemon() if m.tool is None]
+    if card.kind == "Stadium":
+        same = state.stadium is not None and card_of(state, state.stadium).name == card.name
+        return [] if p.flags.stadium_played or same else [Action(ActionKind.PLAY_STADIUM, me, card=uid)]
+    if card.kind == "Supporter":
+        if p.flags.supporter_played or state.turn == 1:      # not on the very first turn
+            return []
+        kind = ActionKind.PLAY_SUPPORTER
+    else:
+        kind = ActionKind.PLAY_ITEM
+    return [Action(kind, me, card=uid)] if runtime.can_use(state, me, card.moves[0].move_id, uid) else []
 
 
 # ---------------------------------------------------------------- doing it
@@ -105,7 +184,9 @@ def apply_action(state: State, action: Action) -> None:
     p = state.players[me]
     if action.kind == ActionKind.BENCH:
         p.hand.remove(action.card)
-        p.bench.append(PokemonInPlay(stack=[action.card], in_play_since=state.turn))
+        mon = PokemonInPlay(stack=[action.card], in_play_since=state.turn)
+        p.bench.append(mon)
+        _offer(state, mon, "on_play_bench")
     elif action.kind == ActionKind.EVOLVE:
         mon = find_pokemon(state, me, action.target)
         p.hand.remove(action.card)
@@ -114,6 +195,7 @@ def apply_action(state: State, action: Action) -> None:
         mon.abilities_used.clear()
         clear_conditions(mon)
         drop_lasting(state, mon.uid)
+        _offer(state, mon, "on_evolve")
     elif action.kind == ActionKind.ATTACH_ENERGY:
         p.hand.remove(action.card)
         find_pokemon(state, me, action.target).energy.append(action.card)
@@ -129,6 +211,24 @@ def apply_action(state: State, action: Action) -> None:
                                           min_count=cost, max_count=cost, subject=action.target)
         else:
             _retreat(state, me, action.target)
+    elif action.kind in (ActionKind.PLAY_ITEM, ActionKind.PLAY_SUPPORTER):
+        p.hand.remove(action.card)
+        p.playing.append(action.card)
+        p.flags.supporter_played |= action.kind == ActionKind.PLAY_SUPPORTER
+        runtime.push(state, me, action.card, card_of(state, action.card).moves[0].move_id)
+        runtime.run(state)
+        _settle(state)
+    elif action.kind == ActionKind.PLAY_STADIUM:
+        p.hand.remove(action.card)
+        runtime.discard_stadium(state)
+        state.stadium = action.card
+        p.flags.stadium_played = True
+        _settle(state)                                   # fewer HP can Knock Out
+    elif action.kind == ActionKind.ATTACH_TOOL:
+        p.hand.remove(action.card)
+        find_pokemon(state, me, action.target).tool = action.card
+    elif action.kind == ActionKind.USE_ABILITY:
+        _use_ability(state, find_pokemon(state, me, action.target), action.move_id)
     elif action.kind == ActionKind.ATTACK:
         _attack(state, action.move_id)
     elif action.kind == ActionKind.END_TURN:
@@ -151,12 +251,22 @@ def answer_choice(state: State, pending: PendingChoice, option: int | None) -> N
     elif pending.kind == "new_active":                   # only attacks empty an Active Spot so far
         move_to_active(state, pending.player, option)
         _finish_attack(state)
+    elif pending.kind == "promote":                      # during the turn, which then goes on
+        move_to_active(state, pending.player, option)
+        _settle(state)
+    elif pending.kind == "use_ability":
+        if option == 1:
+            mon = find_pokemon(state, pending.player, pending.subject)
+            move = next(m for m in card_of(state, mon.card).moves if m.kind == "ability")
+            _use_ability(state, mon, move.move_id)
     elif pending.kind in runtime.CHOICES:
         attacking = runtime.effect_for(state.stack[-1].move_id).timing == "attack"
         runtime.answer(state, pending, option)
         runtime.run(state)
         if attacking and not state.pending:
             _finish_attack(state)
+        elif not attacking:
+            _settle(state)
     else:
         raise NotImplementedError(f"choice {pending.kind!r} is not written yet")
 
@@ -191,6 +301,7 @@ def attack_damage(state: State, attacker: PokemonInPlay, defender: PokemonInPlay
         damage = runtime.amount(state, effect.damage, state.current, attacker.uid)
     if not damage:
         return 0
+    damage += runtime.damage_bonus(state, state.current, attacker)      # before Weakness and Resistance
     if not effect.ignore_weakness_resistance:
         kind, target = card_of(state, attacker.card).type, card_of(state, defender.card)
         if target.weakness == kind:
