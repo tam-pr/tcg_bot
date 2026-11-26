@@ -64,3 +64,19 @@ def test_card_effects_that_draw_or_flip_are_reported_without_naming_cards(monkey
     assert "them puts their hand (2 card(s)) on the bottom of their deck." in lines
     assert "Coin flip for me: HEADS." in lines and "them draws 6 card(s)." in lines
     assert not [line for line in lines for name in ("Hilda", "Switch", "Judge") if name in line]
+
+
+def test_a_knock_out_is_reported_before_its_prizes_and_hp_stops_at_zero():
+    from test_engine_attacks import LOP, LUC, F, arrange, attack
+
+    from tcg_bot.engine.types import Action, ActionKind
+    from tcg_bot.narrate import board_lines
+
+    state = arrange(LUC, 678, [F, F], "Mega Lopunny ex")
+    after = attack(state, "Mega Brave")                       # 270, doubled by Weakness: more than 330 HP
+    move_id = next(m.move_id for m in catalog().cards[678].moves if m.name == "Mega Brave")
+    lines = describe(state, Action(ActionKind.ATTACK, LUC, move_id=move_id), after, ("lop", "luc"))
+    knocked = next(i for i, line in enumerate(lines) if "Knocked Out" in line)
+    assert knocked < next(i for i, line in enumerate(lines) if "Prize card" in line)
+    state.players[LOP].active.damage = 999
+    assert " 0/330" in "\n".join(board_lines(state, ("lop", "luc")))

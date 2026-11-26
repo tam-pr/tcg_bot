@@ -38,7 +38,8 @@ def locked(state: State, mon: PokemonInPlay, move_id: str) -> bool:
 
 def usable_attacks(state: State, mon: PokemonInPlay) -> list[Move]:
     return [m for m in card_of(state, mon.card).moves
-            if m.kind == "attack" and can_pay(state, mon, m) and not locked(state, mon, m.move_id)]
+            if m.kind == "attack" and can_pay(state, mon, m) and not locked(state, mon, m.move_id)
+            and not _would_leave_nobody(state, m.move_id)]
 
 
 # ---------------------------------------------------------------- the turn
@@ -95,8 +96,8 @@ def abilities(state: State, mon: PokemonInPlay, timing: str) -> list[Move]:
 
 
 def _would_leave_nobody(state: State, move_id: str) -> bool:
-    """Project rule (owner's decision, 2026-11-26): an Ability that takes its own Pokémon out of play, such as
-    Run Away Draw, cannot be used when that is the player's only Pokémon. The card text itself does not say this."""
+    """Project rule (owner's decision, 2026-11-26): an Ability or attack that takes its own Pokémon out of play
+    (Run Away Draw, Tuck Tail) cannot be used when that is the player's only Pokémon. The card text does not say this."""
     def leaves_play(steps) -> bool:
         return any((isinstance(s, MoveCards) and s.source == "this_pokemon_and_attached")
                    or (isinstance(s, If) and leaves_play(s.then + s.otherwise)) for s in steps)

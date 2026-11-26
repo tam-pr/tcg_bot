@@ -197,6 +197,7 @@ def _consequences(before: State, after: State, names: tuple[str, str]) -> list[s
                 out.append(f"{who} is healed of {old.damage - mon.damage} damage.")
             if mon.rotation != old.rotation:
                 out.append(f"{who} is now {mon.rotation}." if mon.rotation else f"{who} is no longer {old.rotation}.")
+    for i in PLAYERS:                                      # after every Knock Out line, for both players
         taken = len(before.players[i].prizes) - len(after.players[i].prizes)
         if taken > 0 and before.phase != Phase.SETUP:
             out.append(f"{names[i]} takes {taken} Prize card(s).")
@@ -234,7 +235,7 @@ def board_lines(state: State, names: tuple[str, str]) -> list[str]:
         energy = "".join(catalog().energy[state.card_ids[u]][0] for u in mon.energy)
         state_text = f" ({mon.rotation})" if mon.rotation else ""
         tool = "" if mon.tool is None else f" +{name(mon.tool)}"
-        return f"{name(mon.card)} {hp - mon.damage}/{hp}" + (f" [{energy}]" if energy else "") + tool + state_text
+        return f"{name(mon.card)} {max(hp - mon.damage, 0)}/{hp}" + (f" [{energy}]" if energy else "") + tool + state_text
 
     title = "setup" if state.phase == Phase.SETUP else f"turn {state.turn}: {names[state.current]}"
     if state.phase == Phase.OVER:

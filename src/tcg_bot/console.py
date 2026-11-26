@@ -44,7 +44,7 @@ def pokemon_label(state: State, uid: int) -> str:
                 hp = max_hp(state, mon)
                 energy = "".join(catalog().energy[state.card_ids[u]][0] for u in mon.energy)
                 extra = f", {energy}" if energy else ""
-                return f"{card_of(state, mon.card).name} ({where}, {hp - mon.damage}/{hp}{extra})"
+                return f"{card_of(state, mon.card).name} ({where}, {max(hp - mon.damage, 0)}/{hp}{extra})"
     raise ValueError(f"no Pokémon {uid} in play")
 
 
@@ -163,7 +163,7 @@ def table(state: State, view: Observation, names: tuple[str, str]) -> list[str]:
     def mon_text(mon: PokemonInPlay) -> str:
         hp = max_hp(state, mon)
         energy = "".join(catalog().energy[view.card_ids[u]][0] for u in mon.energy)
-        text = f"{name(mon.card)} {hp - mon.damage}/{hp}" + (f" [{energy}]" if energy else "")
+        text = f"{name(mon.card)} {max(hp - mon.damage, 0)}/{hp}" + (f" [{energy}]" if energy else "")
         return text + (f" +{name(mon.tool)}" if mon.tool is not None else "") + (
             f" ({mon.rotation})" if mon.rotation else "")
 
@@ -208,7 +208,7 @@ def play(deck: str, seed: int, ask=input, say=print) -> State:
             if not line.startswith("Cards:"):
                 say("  " + line)
         drawn = [u for u in after.players[0].hand if u not in state.players[0].hand]
-        if drawn:
+        if drawn and after.phase != Phase.OVER:
             say("  New in your hand: " + ", ".join(card_of(after, u).name for u in drawn))
         state = after
 

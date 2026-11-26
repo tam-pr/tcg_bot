@@ -206,17 +206,17 @@ def test_locked_attacks_come_back_a_turn_later(card, name):
     assert move_id in [a.move_id for a in offered(state)]
 
 
-@pytest.mark.parametrize("bench", [["Solrock"], []])
-def test_tuck_tail_goes_back_to_the_hand(bench):
-    state = arrange(LUC, 1071, [F, F, F], "Mega Lopunny ex", bench=bench)
+def test_tuck_tail_goes_back_to_the_hand():
+    state = arrange(LUC, 1071, [F, F, F], "Mega Lopunny ex", bench=["Solrock"])
     mine = state.players[LUC].active.stack + state.players[LUC].active.energy
     state = attack(state, "Tuck Tail")
     assert set(mine) <= set(state.players[LUC].hand)
-    if bench:
-        assert state.pending.kind == "new_active" and state.pending.player == LUC
-        assert choose(state, state.pending.options[0]).current == LOP
-    else:
-        assert state.phase == Phase.OVER and state.winner == LOP
+    assert state.pending.kind == "new_active" and state.pending.player == LUC
+    assert choose(state, state.pending.options[0]).current == LOP
+
+
+def test_tuck_tail_needs_another_pokemon_in_play():
+    assert not offered(arrange(LUC, 1071, [F, F, F], "Mega Lopunny ex"))
 
 
 @pytest.mark.parametrize("bench, damage", [([], 0), (["Lunatone"], 70)])
