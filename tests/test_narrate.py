@@ -5,7 +5,7 @@ import pytest
 from tcg_bot.engine.catalog import catalog
 from tcg_bot.engine.game import legal_actions, new_game, step
 from tcg_bot.engine.types import Phase
-from tcg_bot.engine.narrate import board_lines, demo_choice, describe, opening_lines, write
+from tcg_bot.narrate import board_lines, demo_choice, describe, opening_lines, write
 
 DECKS = ("lopunny", "mega_lucario")
 
