@@ -16,3 +16,8 @@ __pycache__/
 
 # Empty repo accidentally cloned inside the project (see tcg_bot/.git)
 /tcg_bot/
+game.log
+board.log
+board.log
+board.log
+board.log
