@@ -7,9 +7,21 @@ Not recorded yet: the hands an opponent shows when taking a mulligan.
 """
 from dataclasses import dataclass, replace
 
+from tcg_bot.effects import MoveCards
+from tcg_bot.engine import effects_runtime as runtime
+from tcg_bot.engine.board import card_of, max_hp, retreat_cost
 from tcg_bot.engine.types import LastingEffect, PendingChoice, Phase, PokemonInPlay, State, TurnFlags, owner_of
 
 CARD_CHOICES = {"pick", "attach_pick", "energy_to_hand", "retreat_cost"}   # their options are card uids
+
+
+@dataclass(frozen=True)
+class ChoiceContext:
+    """What the viewer's pending choice is for: "pick a card" can mean keeping it or throwing it away."""
+    move_id: str | None                  # the attack, Ability or card text that is asking; None for a retreat
+    card_id: int | None                  # the card that text is printed on
+    source: str | None                   # where the picked card is now: "deck", "hand", "discard", ...
+    destination: str | None              # where it will go: "hand", "discard", "bench", ...
 
 
 @dataclass(frozen=True)
@@ -26,6 +38,8 @@ class PlayerView:
     flags: TurnFlags
     mulligans: int
     knocked_out_on_turn: int | None
+    max_hp: dict[int, int]               # Pokémon id -> HP now, counting the Stadium
+    retreat_cost: dict[int, int]         # Pokémon id -> Energy needed now, counting its Tool
 
 
 @dataclass(frozen=True)
@@ -41,6 +55,7 @@ class Observation:
     stadium: int | None
     lasting: tuple[LastingEffect, ...]
     pending: PendingChoice | None        # only when the choice is the viewer's
+    choice: ChoiceContext | None         # what that choice is for, when a card or a retreat is behind it
     winner: int | None
     end_reason: str | None
     card_ids: dict[int, int]             # uid -> card_id for the cards the viewer can identify, and no others
@@ -52,7 +67,10 @@ def _view(state: State, player: int, viewer: int) -> PlayerView:
     mine = player == viewer
     face_down = not mine and state.phase == Phase.SETUP
     known = p.hand if mine else [u for u in p.hand if u in p.revealed]
+    shown = [] if face_down else p.pokemon()
     return PlayerView(
+        max_hp={m.uid: max_hp(state, m) for m in shown},
+        retreat_cost={m.uid: retreat_cost(state, m) for m in shown},
         active=None if face_down or p.active is None else p.active.clone(),
         bench=() if face_down else tuple(m.clone() for m in p.bench),
         face_down=len(p.pokemon()) if face_down else 0,
@@ -60,6 +78,26 @@ def _view(state: State, player: int, viewer: int) -> PlayerView:
         hand_count=len(p.hand), deck_count=len(p.deck), prize_count=len(p.prizes),
         discard=tuple(p.discard), playing=tuple(p.playing), flags=p.flags.clone(),
         mulligans=p.mulligans, knocked_out_on_turn=p.knocked_out_on_turn)
+
+
+def _context(state: State, pending: PendingChoice | None) -> ChoiceContext | None:
+    if pending is None:
+        return None
+    move_id = source = destination = None
+    if pending.kind in runtime.CHOICES:
+        frame = state.stack[-1]
+        move_id = frame.move_id
+        if isinstance(frame.steps[0], MoveCards):
+            source, destination = frame.steps[0].source, frame.steps[0].destination
+    elif pending.kind == "use_ability":
+        mon = next(m for m in state.players[pending.player].pokemon() if m.uid == pending.subject)
+        move_id = next(m.move_id for m in card_of(state, mon.card).moves if m.kind == "ability")
+    elif pending.kind == "retreat_cost":
+        source, destination = "attached", "discard"
+    else:
+        return None                      # the kind says it all: go first, mulligan draw, new Active
+    card_id = None if move_id is None else int(move_id.split("_")[0])
+    return ChoiceContext(move_id=move_id, card_id=card_id, source=source, destination=destination)
 
 
 def observe(state: State, player: int) -> Observation:
@@ -85,6 +123,6 @@ def observe(state: State, player: int) -> Observation:
     return Observation(
         player=player, phase=state.phase, turn=state.turn, current=state.current, first_player=state.first_player,
         waiting_for=waiting, me=me, opponent=opponent, stadium=state.stadium, lasting=tuple(state.lasting),
-        pending=pending, winner=state.winner, end_reason=state.end_reason,
+        pending=pending, choice=_context(state, pending), winner=state.winner, end_reason=state.end_reason,
         card_ids={u: state.card_ids[u] for u in seen},
         my_deck_list=tuple(sorted(c for u, c in enumerate(state.card_ids) if owner_of(u) == player)))

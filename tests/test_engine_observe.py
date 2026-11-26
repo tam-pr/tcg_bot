@@ -6,6 +6,7 @@ import pytest
 from test_engine_attacks import LOP, LUC
 from test_engine_cards import abilities, board, choose_first, give, play
 
+from tcg_bot.engine.catalog import catalog
 from tcg_bot.engine.game import legal_actions, new_game, step
 from tcg_bot.engine.observe import CARD_CHOICES, observe
 from tcg_bot.engine.types import Phase
@@ -107,3 +108,41 @@ def test_face_down_pokemon_are_hidden_during_setup():
     if state.phase == Phase.SETUP:
         view = observe(state, 0)
         assert view.opponent.active is None and view.opponent.face_down >= 1
+
+
+def test_the_view_says_whether_a_picked_card_is_kept_or_thrown_away():
+    state = board(LUC)
+    give(state, LUC, "Ultra Ball", "Switch", "Judge")
+    state = play(state, "Ultra Ball")
+    cost = observe(state, LUC).choice
+    assert (cost.source, cost.destination) == ("hand", "discard") and catalog().cards[cost.card_id].name == "Ultra Ball"
+    state = choose_first(choose_first(state))
+    search = observe(state, LUC).choice
+    assert (search.source, search.destination, search.move_id) == ("deck", "hand", cost.move_id)
+    assert observe(state, LOP).choice is None
+
+
+def test_the_view_gives_current_hp_and_retreat_cost():
+    state = board(LUC)
+    mon = state.players[LUC].active.uid
+    assert observe(state, LOP).opponent.max_hp[mon] == 80 and observe(state, LUC).me.retreat_cost[mon] == 2
+    give(state, LUC, "Air Balloon", "Gravity Mountain")
+    state = play(play(state, "Air Balloon"), "Gravity Mountain")
+    view = observe(state, LUC)
+    assert view.me.retreat_cost[mon] == 0
+    assert view.me.max_hp[mon] == 80          # Gravity Mountain only lowers Stage 2 Pokémon
+
+
+@pytest.mark.parametrize("seed", range(20))
+def test_every_card_pick_comes_with_its_purpose(seed):
+    pick = random.Random(seed)
+    state = new_game(("lopunny", "mega_lucario"), seed)
+    while state.phase != Phase.OVER:
+        view = observe(state, observe(state, 0).waiting_for)
+        if view.pending and view.pending.kind in CARD_CHOICES | {"attach_target"}:
+            assert view.choice.source and view.choice.destination
+        if view.choice and view.choice.move_id:
+            assert any(m.move_id == view.choice.move_id for m in catalog().cards[view.choice.card_id].moves)
+        shown = [m for side in (view.me, view.opponent) for m in ([side.active] if side.active else []) + list(side.bench)]
+        assert {m.uid for m in shown} == set(view.me.max_hp) | set(view.opponent.max_hp)
+        state = step(state, pick.choice(legal_actions(state)))
