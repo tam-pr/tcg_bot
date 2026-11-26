@@ -326,6 +326,7 @@ def _leave_play(state: State, player: int, uid: int, destination: str) -> None:
         p.revealed.update(cards)                         # the opponent saw them in play
     elif destination == "deck_shuffle":
         p.deck += cards
+        p.revealed.difference_update(cards)              # once shuffled away they are unknown again
         state.rng.shuffle(p.deck)
     else:
         raise NotImplementedError(f"a Pokémon leaving to {destination}")
