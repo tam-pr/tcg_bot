@@ -190,6 +190,7 @@ class State:
     pending: PendingChoice | None = None
     winner: int | None = None                       # None with phase OVER is a draw
     end_reason: str | None = None
+    events: list[tuple] = field(default_factory=list)   # public things the last step did, for the log
 
     @classmethod
     def initial(cls, decks: tuple[list[int], list[int]], seed: int) -> "State":
@@ -217,4 +218,4 @@ class State:
         rng = random.Random()
         rng.setstate(self.rng.getstate())
         return replace(self, players=[p.clone() for p in self.players], rng=rng,
-                       lasting=self.lasting.copy(), stack=self.stack.copy())
+                       lasting=self.lasting.copy(), stack=self.stack.copy(), events=self.events.copy())

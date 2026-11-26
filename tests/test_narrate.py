@@ -45,3 +45,22 @@ def test_a_whole_game_can_be_narrated(seed):
         board_lines(after, DECKS)
         state = after
     assert lines[-1].startswith("GAME OVER")
+
+
+def test_card_effects_that_draw_or_flip_are_reported_without_naming_cards(monkeypatch):
+    from test_engine_attacks import LOP, LUC
+    from test_engine_cards import board, give, play
+
+    from tcg_bot.engine import effects_runtime
+
+    monkeypatch.setattr(effects_runtime, "coin_heads", lambda state: True)
+    state = board(LOP)
+    give(state, LOP, "Lucian", "Hilda")
+    give(state, LUC, "Switch", "Judge")
+    after = play(state, "Lucian")
+    action = next(a for a in legal_actions(state) if a.kind == "play_supporter")
+    lines = describe(state, action, after, ("me", "them"))
+    assert "me puts their hand (1 card(s)) on the bottom of their deck." in lines
+    assert "them puts their hand (2 card(s)) on the bottom of their deck." in lines
+    assert "Coin flip for me: HEADS." in lines and "them draws 6 card(s)." in lines
+    assert not [line for line in lines for name in ("Hilda", "Switch", "Judge") if name in line]

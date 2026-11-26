@@ -176,7 +176,9 @@ def _do(state: State, frame: Frame, step) -> None:
     me, source = frame.controller, frame.source
     p = state.players[me]
     if isinstance(step, fx.CoinFlip):
-        outcome = step.heads if coin_heads(state) else step.tails
+        heads = coin_heads(state)
+        state.events.append(("coin", me, heads))
+        outcome = step.heads if heads else step.tails
         state.stack[-1] = replace(frame, steps=outcome + frame.steps[1:])
         return
     if isinstance(step, fx.If):
@@ -204,7 +206,9 @@ def _do(state: State, frame: Frame, step) -> None:
     if isinstance(step, fx.Draw):
         count = amount(state, step.count, me, source)
         for player in _sides(me, step.side):
-            if draw(state, player, count) and player == me:
+            drawn = draw(state, player, count)
+            state.events.append(("draw", player, drawn))
+            if drawn and player == me:
                 _note(state, "drew")
     elif isinstance(step, fx.DamageSelf):
         find_pokemon(state, me, source).damage += step.amount
@@ -236,6 +240,7 @@ def _move(state: State, frame: Frame, step: fx.MoveCards) -> None:
     if route == ("hand", "deck_shuffle"):
         for player in _sides(me, step.side):
             q = state.players[player]
+            state.events.append(("hand_shuffled", player, len(q.hand)))
             q.deck += q.hand
             q.hand.clear()
             q.revealed.clear()
@@ -245,6 +250,7 @@ def _move(state: State, frame: Frame, step: fx.MoveCards) -> None:
             q = state.players[player]
             if q.hand:
                 cards = q.hand.copy()
+                state.events.append(("hand_to_bottom", player, len(cards)))
                 state.rng.shuffle(cards)                 # "shuffles their hand and puts it on the bottom"
                 q.deck += cards
                 q.hand.clear()
@@ -257,6 +263,7 @@ def _move(state: State, frame: Frame, step: fx.MoveCards) -> None:
     elif route == ("attached_to_target", "hand"):
         mon = find_pokemon(state, me, frame.chosen)
         back = [u for u in mon.energy if matches(card_of(state, u), step.filter)]
+        state.events.append(("energy_back", me, len(back)))
         for uid in back:
             mon.energy.remove(uid)
             p.hand.append(uid)

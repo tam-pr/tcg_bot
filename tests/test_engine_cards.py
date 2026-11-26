@@ -285,6 +285,12 @@ def test_run_away_draw_shuffles_its_user_back_and_the_turn_goes_on():
     assert card_of(state, me.active.card).name == "Psyduck" and not any(m.uid == mine[0] for m in me.pokemon())
 
 
+def test_run_away_draw_needs_another_pokemon_in_play():
+    assert not abilities(board(LOP, active="Dudunsparce"))               # it is the only one
+    assert abilities(board(LOP, active="Dudunsparce", bench=["Psyduck"]))
+    assert abilities(board(LOP, active="Psyduck", bench=["Dudunsparce"]))   # on the Bench: the Active stays
+
+
 def test_fan_call_only_on_your_first_turn():
     state = board(LOP, bench=["Fan Rotom"])
     assert not abilities(state)

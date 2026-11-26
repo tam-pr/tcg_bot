@@ -5,7 +5,7 @@ The only Special Condition the two decks cause is Asleep.
 """
 from dataclasses import replace
 
-from tcg_bot.effects import Lockout, Usage
+from tcg_bot.effects import If, Lockout, MoveCards, Usage
 from tcg_bot.engine import effects_runtime as runtime
 from tcg_bot.engine.board import (
     attached_energy,
@@ -64,9 +64,12 @@ def end_turn(state: State) -> None:
 
 def _checkup(state: State) -> None:
     """Between turns. Asleep: flip, heads wakes the Pokémon."""
-    for p in state.players:
-        if p.active and p.active.rotation == "Asleep" and coin_heads(state):
-            p.active.rotation = None
+    for player, p in enumerate(state.players):
+        if p.active and p.active.rotation == "Asleep":
+            heads = coin_heads(state)
+            state.events.append(("sleep_coin", player, heads))
+            if heads:
+                p.active.rotation = None
 
 
 def _finish(state: State, winner: int | None, reason: str) -> None:
@@ -85,9 +88,20 @@ def abilities(state: State, mon: PokemonInPlay, timing: str) -> list[Move]:
         usage = runtime.effect_for(move.move_id).usage
         if (not _used(state, mon, move.move_id, usage)
                 and (not usage.first_turn_only or state.is_first_turn_of(me))
+                and not _would_leave_nobody(state, move.move_id)
                 and runtime.can_use(state, me, move.move_id)):
             found.append(move)
     return found
+
+
+def _would_leave_nobody(state: State, move_id: str) -> bool:
+    """Project rule (owner's decision, 2026-11-26): an Ability that takes its own Pokémon out of play, such as
+    Run Away Draw, cannot be used when that is the player's only Pokémon. The card text itself does not say this."""
+    def leaves_play(steps) -> bool:
+        return any((isinstance(s, MoveCards) and s.source == "this_pokemon_and_attached")
+                   or (isinstance(s, If) and leaves_play(s.then + s.otherwise)) for s in steps)
+
+    return len(state.players[state.current].pokemon()) == 1 and leaves_play(runtime.effect_for(move_id).steps)
 
 
 def _used(state: State, mon: PokemonInPlay, move_id: str, usage: Usage) -> bool:

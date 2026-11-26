@@ -47,6 +47,7 @@ def describe(before: State, action: Action, after: State, names: tuple[str, str]
     else:
         out.append(_turn_sentence(before, action, after, who))
 
+    out += [_event_text(e, names) for e in after.events]
     if before.phase != Phase.SETUP:
         out += _consequences(before, after, names)
     if before.phase == Phase.SETUP and after.phase != Phase.SETUP:
@@ -138,6 +139,25 @@ def _turn_sentence(before: State, action: Action, after: State, who: str) -> str
     if kind == "attach_target":
         return f"{who} attaches {name(before.pending.subject)} to {mons[action.option]}."
     return f"{who}: {action.kind.value}"
+
+
+def _event_text(event: tuple, names: tuple[str, str]) -> str:
+    """Coin flips, draws and hands going away. Only counts: never which cards."""
+    kind, player, value = event
+    who = names[player]
+    if kind == "coin":
+        return f"Coin flip for {who}: {'HEADS' if value else 'TAILS'}."
+    if kind == "sleep_coin":
+        return f"Sleep check for {who}'s Active: {'HEADS, it wakes up' if value else 'TAILS, still asleep'}."
+    if kind == "draw":
+        return f"{who} draws {value} card(s)."
+    if kind == "hand_shuffled":
+        return f"{who} shuffles their hand ({value} card(s)) into their deck."
+    if kind == "energy_back":
+        return f"{who} takes {value} Energy card(s) back into their hand."
+    if kind == "hand_to_bottom":
+        return f"{who} puts their hand ({value} card(s)) on the bottom of their deck."
+    raise ValueError(f"unknown event {event}")
 
 
 def _cards_of(state: State, pokemon: int):

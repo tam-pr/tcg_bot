@@ -41,6 +41,7 @@ def step(state: State, action: Action) -> State:
     if action not in legal_actions(state):
         raise ValueError(f"illegal action: {action}")
     new = state.clone()
+    new.events.clear()                       # only what this step does
     if action.kind in (ActionKind.CHOOSE, ActionKind.CHOOSE_DONE):
         _answer(new, action.option)
     elif new.phase == Phase.SETUP:
